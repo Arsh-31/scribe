@@ -44,7 +44,7 @@ const Nav: FC = () => {
   console.log("User Photo URL:", user?.photoURL);
 
   return (
-    <nav className="w-full flex justify-between items-center py-3 px-6 bg-white border-b border-gray-200 shadow-sm">
+    <nav className="w-full flex justify-between items-center py-2 px-6 bg-white border-b border-gray-200 shadow-sm">
       {/* Search Bar */}
       <div className="flex items-center space-x-4">
         <div className="relative">
