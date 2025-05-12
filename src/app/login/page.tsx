@@ -115,7 +115,7 @@ export default function LoginPage() {
         </AppBar>
 
         {/* Main Content */}
-        <Container maxWidth="lg" sx={{ mt: 8 }}>
+        <Container maxWidth="lg" sx={{ mt: 13 }}>
           <Stack
             direction={{ xs: "column", md: "row" }}
             spacing={6}
