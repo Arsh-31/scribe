@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { auth, db } from "@/app/utils/firebase";
+import { auth, db } from "@/utils/firebase";
 import {
   ArrowBack as ArrowBackIcon,
   Save as SaveIcon,
 } from "@mui/icons-material";
 import { Button, TextField, Box, Container, Typography } from "@mui/material";
-import RichTextEditor from "@/app/components/RichTextEditor";
+import RichTextEditor from "@/components/RichTextEditor";
 
 const EditNotePage = () => {
   const params = useParams();

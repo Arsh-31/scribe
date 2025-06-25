@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "./utils/firebase";
+import { auth } from "../utils/firebase";
 
-import Nav from "./components/Nav";
-import Body from "./components/Body";
-import SideBar from "./components/SideBar";
+import Nav from "../components/Nav";
+import Body from "../components/Body";
+import SideBar from "../components/SideBar";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);

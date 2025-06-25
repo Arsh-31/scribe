@@ -1,8 +1,15 @@
-import { FC, JSX, useEffect, useState } from "react";
+import { FC, JSX, useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { deleteNote, getNotes } from "../utils/firebase";
+import {
+  deleteNote,
+  getNotes,
+  createFolder,
+  getFolders,
+} from "../utils/firebase";
 import { relativeTime } from "../utils/dateFormat";
 import DOMPurify from "dompurify";
+import { auth } from "../utils/firebase";
+import { useMediaQuery } from "@mui/material";
 
 import {
   Button,
@@ -13,7 +20,7 @@ import {
   DialogTitle,
 } from "@mui/material";
 import { Delete, Add, Search, ArrowForward } from "@mui/icons-material";
-import { useSearch } from "../contextMenu/SearchContext";
+import { useSearch } from "../app/contextMenu/SearchContext";
 
 // Define the Note type
 interface Note {
@@ -23,6 +30,11 @@ interface Note {
   updatedAt: Date;
 }
 
+type Folder = {
+  id: string;
+  name: string;
+};
+
 const Body: FC = ({}) => {
   // Update the useState hook with the Note type
   const [notes, setNotes] = useState<Note[]>([]);
@@ -30,10 +42,19 @@ const Body: FC = ({}) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const { query } = useSearch();
+  const [addFolderMode, setAddFolderMode] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("New Folder");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [selectedFolderName, setSelectedFolderName] = useState<string | null>(
+    null
+  );
+  const isMobile =
+    typeof window !== "undefined" ? window.innerWidth < 640 : false;
 
   useEffect(() => {
     const fetchNotes = async () => {
-      const fetchedNotes = await getNotes();
+      const fetchedNotes = await getNotes(selectedFolderId || undefined);
       const formattedNotes = fetchedNotes.map(
         (note: {
           id: string;
@@ -51,7 +72,61 @@ const Body: FC = ({}) => {
       setLoading(false);
     };
     fetchNotes();
+  }, [selectedFolderId]);
+
+  useEffect(() => {
+    const fetchFolderName = async () => {
+      if (!selectedFolderId) {
+        setSelectedFolderName(null);
+        return;
+      }
+      const user = auth.currentUser;
+      if (!user) return;
+      const foldersRaw = await getFolders(user.uid);
+      const folder = (foldersRaw as any[]).find(
+        (f) => f.id === selectedFolderId && f.name
+      );
+      setSelectedFolderName(folder ? folder.name : null);
+    };
+    fetchFolderName();
+  }, [selectedFolderId]);
+
+  useEffect(() => {
+    const handler = () => {
+      const id = (window as any).selectedFolderId || null;
+      setSelectedFolderId(id);
+      if (id) {
+        try {
+          localStorage.setItem("selectedFolderId", id);
+        } catch {}
+      } else {
+        try {
+          localStorage.removeItem("selectedFolderId");
+        } catch {}
+      }
+    };
+    window.addEventListener("folder-selected", handler);
+    return () => window.removeEventListener("folder-selected", handler);
   }, []);
+
+  // On mount, restore selected folder from localStorage
+  useEffect(() => {
+    try {
+      const id = localStorage.getItem("selectedFolderId");
+      if (id) {
+        setSelectedFolderId(id);
+        (window as any).selectedFolderId = id;
+        window.dispatchEvent(new Event("folder-selected"));
+      }
+    } catch {}
+  }, []);
+
+  // Always focus the input when addFolderMode is set (fixes mobile glitch)
+  useEffect(() => {
+    if (addFolderMode && inputRef.current) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [addFolderMode]);
 
   const handleDeleteConfirm = async () => {
     if (!noteToDelete) return;
@@ -89,6 +164,30 @@ const Body: FC = ({}) => {
     );
   }
 
+  // Expose a function to trigger add folder mode (to be called from sidebar)
+  (window as any).triggerAddFolderMode = () => {
+    setAddFolderMode(true);
+  };
+
+  // Save new folder to backend
+  const handleNewFolderSave = async () => {
+    const user = auth.currentUser;
+    if (!user || !newFolderName.trim()) {
+      setAddFolderMode(false);
+      return;
+    }
+    const newFolderId = await createFolder(user.uid, newFolderName.trim());
+    setAddFolderMode(false);
+    setNewFolderName("New Folder");
+    setSelectedFolderId(newFolderId);
+    (window as any).selectedFolderId = newFolderId;
+    try {
+      localStorage.setItem("selectedFolderId", newFolderId);
+    } catch {}
+    window.dispatchEvent(new Event("folder-selected"));
+    window.dispatchEvent(new Event("folder-created"));
+  };
+
   if (loading) {
     return (
       <div className="w-full min-h-screen bg-gray-50 p-6">
@@ -103,10 +202,38 @@ const Body: FC = ({}) => {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">My Notes</h1>
+            {addFolderMode ? (
+              <input
+                ref={inputRef}
+                className="text-3xl font-bold text-gray-800 bg-transparent border-b border-gray-300 focus:outline-none focus:border-purple-600"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onBlur={handleNewFolderSave}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    inputRef.current?.blur();
+                  }
+                }}
+              />
+            ) : selectedFolderName ? (
+              <h1 className="text-3xl font-bold text-gray-800">
+                {selectedFolderName}
+              </h1>
+            ) : (
+              <h1 className="text-3xl font-bold text-gray-800">My Notes</h1>
+            )}
             <p className="text-gray-500">{filteredNotes.length} notes</p>
           </div>
           <div className="flex items-center space-x-4">
+            <button
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              onClick={() =>
+                (window as any).triggerAddFolderMode &&
+                (window as any).triggerAddFolderMode()
+              }
+            >
+              Add Folder
+            </button>
             <Link href="/newnote">
               <Button
                 variant="contained"
@@ -131,7 +258,21 @@ const Body: FC = ({}) => {
 
         {/* Notes Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredNotes.length > 0 ? (
+          {addFolderMode ? (
+            <div className="col-span-full text-center py-16">
+              <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 max-w-md mx-auto">
+                <div className="text-gray-400 mb-4">
+                  <Search sx={{ fontSize: 48 }} />
+                </div>
+                <h3 className="text-xl font-medium text-gray-700 mb-2">
+                  Creating a new folder...
+                </h3>
+                <p className="text-gray-500 mb-6">
+                  Enter a name for your new folder above.
+                </p>
+              </div>
+            </div>
+          ) : filteredNotes.length > 0 ? (
             filteredNotes.map((note) => (
               <div
                 key={note.id}
@@ -273,6 +414,21 @@ const Body: FC = ({}) => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Floating New Note Button for Mobile */}
+      <Link
+        href={
+          selectedFolderId ? `/newnote?folder=${selectedFolderId}` : "/newnote"
+        }
+        className="fixed bottom-6 right-6 z-50 sm:hidden"
+      >
+        <button
+          className="bg-purple-600 text-white rounded-full shadow-lg p-4 flex items-center justify-center hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+          aria-label="New Note"
+        >
+          <Add style={{ fontSize: 32 }} />
+        </button>
+      </Link>
     </div>
   );
 };

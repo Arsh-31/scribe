@@ -4,7 +4,7 @@ import { FC, useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
-import { auth, db, deleteNote } from "@/app/utils/firebase";
+import { auth, db, deleteNote } from "@/utils/firebase";
 import {
   Delete as DeleteIcon,
   Edit as EditIcon,

@@ -28,6 +28,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
+import { ExplorerSidebar } from "./explorer/ExplorerSidebar";
 
 // Define the Note type
 interface Note {
@@ -106,10 +107,17 @@ const SideBar: FC = () => {
           <NoteAddIcon className="mr-3 text-gray-500" />
           New Note
         </Link>
+        <Link
+          href="/newfolder"
+          className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+        >
+          <NoteAddIcon className="mr-3 text-gray-500" />
+          New Note
+        </Link>
       </nav>
 
       {/* Recent Notes */}
-      <Box sx={{ flexGrow: 1, mb: 2 }}>
+      {/* <Box sx={{ flexGrow: 1, mb: 2 }}>
         <Typography
           variant="caption"
           sx={{ px: 2, mb: 1, display: "block", color: "gray" }}
@@ -138,6 +146,11 @@ const SideBar: FC = () => {
             <p className="px-3 text-sm text-gray-500">No recent notes</p>
           )}
         </Box>
+      </Box> */}
+
+      {/* Folder Explorer */}
+      <Box sx={{ flexGrow: 1, mb: 2 }}>
+        <ExplorerSidebar />
       </Box>
 
       {/* <Divider sx={{ mb: 2 }} />
